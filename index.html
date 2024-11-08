@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coffee Explorer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            flex-direction: column;
+        }
+
+        .container {
+            background: #222;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: 600;
+            background: linear-gradient(45deg, #6f4e37, #d9a464);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            background-color: #333;
+            color: #f0f0f0;
+            box-sizing: border-box;
+        }
+
+        input:focus,
+        textarea:focus,
+        button:focus {
+            outline: none;
+            border: 1px solid #aaa;
+            background-color: #444;
+        }
+
+        button:active {
+            background-color: #555;
+            border: 1px solid #888;
+        }
+
+
+        button {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #d9a464, #6f4e37);
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            border-radius: 15px;
+            font-size: 1.2em;
+            transition: background 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background: linear-gradient(45deg, #6f4e37, #d9a464);
+        }
+
+        #responseContainer {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-top: 15px;
+            color: white;
+        }
+
+        .bullet-list {
+            list-style-type: disc;
+            margin-left: 20px;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                width: 90%;
+                margin: auto;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            label,
+            input,
+            select,
+            textarea {
+                font-size: 0.9em;
+            }
+
+            button {
+                font-size: 1em;
+                padding: 12px 18px;
+            }
+
+            .loader {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Coffee Explorer</h1>
+        <form id="coffeeForm">
+            <label for="purpose">Цель изучения кофе</label>
+            <input type="text" id="purpose" name="purpose" placeholder="Введите цель..." required>
+
+            <label for="coffeeInterest">Что вы хотите узнать о кофе?</label>
+            <textarea id="coffeeInterest" name="coffeeInterest" placeholder="Введите ваши интересы..." rows="3"
+                required></textarea>
+
+            <button type="submit">Получить информацию о кофе</button>
+        </form>
+
+        <div id="responseContainer" class="hidden">
+            <div id="responseText"></div>
+        </div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "@google/generative-ai": "https://esm.run/@google/generative-ai"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { GoogleGenerativeAI } from "@google/generative-ai";
+
+        const API_KEY = "AIzaSyB3GRRnXnOsnRJOhPpLQtWvKf4Bs1Hx-nU";
+        const genAI = new GoogleGenerativeAI(API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.0-pro" });
+
+        document.getElementById('coffeeForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const purpose = document.getElementById('purpose').value;
+            const coffeeInterest = document.getElementById('coffeeInterest').value;
+
+            const promptMsg = `The user wants to learn about coffee for the purpose: "${purpose}". They are interested in "${coffeeInterest}". Provide detailed, engaging information on coffee-related topics, organized with section titles and bullet points. Despite of input language, each time give the response in the Russian language. Every time.`;
+
+            document.getElementById('responseContainer').classList.remove('hidden');
+            document.getElementById('responseText').innerHTML = "Loading...";
+
+            try {
+                const result = await model.generateContent(promptMsg);
+                const responseText = result?.response?.text() || "No response from AI.";
+                document.getElementById('responseText').innerHTML = formatResponse(responseText);
+            } catch (error) {
+                console.error('Error generating content:', error);
+                document.getElementById('responseText').innerHTML = 'An error occurred. Please try again.';
+            }
+        });
+
+        function formatResponse(response) {
+            response = response.replace(/\*\*/g, '').replace(/\* /g, '').replace(/^\* /gm, '');
+
+            const sections = response.split("\n\n");
+            let formattedResponse = '';
+            sections.forEach(section => {
+                const lines = section.split("\n");
+                const title = lines[0];
+                const content = lines.slice(1).map(line => `<li>${line}</li>`).join("");
+
+                formattedResponse += `<div class="section-title">${title}</div><ul class="bullet-list">${content}</ul>`;
+            });
+
+            return formattedResponse;
+        }
+    </script>
+
+</body>
+
+</html>
